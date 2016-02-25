@@ -28,6 +28,24 @@ public class ReadWriteBufferTest {
     }
 
     @Test
+    public void truncation() throws Exception {
+        ReadWriteBuffer buffer = new ReadWriteBuffer();
+
+        OutputStreamWriter writer = new OutputStreamWriter(buffer.openOutputStream());
+        writer.write("Test String\n");
+        writer.flush();
+
+        buffer.truncate();
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(buffer.openInputStream()));
+
+        writer.write("Another String\n");
+        writer.flush();
+
+        assertEquals("Another String", reader.readLine());
+    }
+
+    @Test
     public void outputCompletionNotification() throws Exception {
         ArrayList<byte[]> completionNotificationBytes = new ArrayList<>();
 

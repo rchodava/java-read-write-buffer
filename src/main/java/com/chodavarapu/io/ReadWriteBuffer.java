@@ -65,6 +65,12 @@ public class ReadWriteBuffer {
         return new BufferOutputStream();
     }
 
+    public void truncate() {
+        synchronized (bufferMonitor) {
+            writtenPosition = 0;
+        }
+    }
+
     private class BufferInputStream extends InputStream {
         private int readPosition = 0;
         private long waitStart;
