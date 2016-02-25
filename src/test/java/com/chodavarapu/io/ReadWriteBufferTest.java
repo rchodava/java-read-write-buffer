@@ -3,6 +3,7 @@ package com.chodavarapu.io;
 import org.junit.Test;
 
 import java.io.*;
+import java.util.ArrayList;
 
 import static org.junit.Assert.assertEquals;
 
@@ -24,6 +25,28 @@ public class ReadWriteBufferTest {
         writer.write("Another String\n");
         writer.flush();
         assertEquals("Another String", reader.readLine());
+    }
+
+    @Test
+    public void outputCompletionNotification() throws Exception {
+        ArrayList<byte[]> completionNotificationBytes = new ArrayList<>();
+
+        ReadWriteBuffer buffer = new ReadWriteBuffer(null, (bytes -> {
+            completionNotificationBytes.add(bytes);
+        }));
+
+        OutputStreamWriter writer = new OutputStreamWriter(buffer.openOutputStream());
+        writer.write("Test String\n");
+        writer.flush();
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(buffer.openInputStream()));
+        assertEquals("Test String", reader.readLine());
+
+        writer.write("Another String\n");
+        writer.flush();
+        writer.close();
+
+        assertEquals("Test String\nAnother String\n", new String(completionNotificationBytes.get(0)));
     }
 
     @Test(expected = BlockingReadTimeoutException.class)
