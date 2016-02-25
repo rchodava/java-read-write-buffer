@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.function.Consumer;
 
 /**
  * @author Ravi Chodavarapu (rchodava@gmail.com)
@@ -39,18 +40,21 @@ public class ReadWriteBuffer {
     private final Object openCountMonitor = new Object();
     private int openOutputStreams = 0;
     private int writtenPosition = 0;
+    private Consumer<byte[]> outputCompleteHook;
 
-    public ReadWriteBuffer(byte[] initialBuffer) {
+    public ReadWriteBuffer(byte[] initialBuffer, Consumer<byte[]> outputCompleteHook) {
         if (initialBuffer != null) {
             buffer = initialBuffer;
             writtenPosition = buffer.length;
         } else {
             buffer = new byte[1024];
         }
+
+        this.outputCompleteHook = outputCompleteHook;
     }
 
     public ReadWriteBuffer() {
-        this(null);
+        this(null, null);
     }
 
     public InputStream openInputStream() {
@@ -188,6 +192,25 @@ public class ReadWriteBuffer {
             }
         }
 
+        private void checkOutputCompletion() {
+            boolean outputComplete = false;
+
+            synchronized (openCountMonitor) {
+                if (openOutputStreams == 0) {
+                    outputComplete = true;
+                }
+            }
+
+            if (outputComplete && ReadWriteBuffer.this.outputCompleteHook != null) {
+                byte[] completeContents;
+                synchronized (bufferMonitor) {
+                    completeContents = Arrays.copyOf(buffer, writtenPosition);
+                }
+
+                outputCompleteHook.accept(completeContents);
+            }
+        }
+
         @Override
         public void write(int b) throws IOException {
             synchronized (bufferMonitor) {
@@ -221,6 +244,7 @@ public class ReadWriteBuffer {
             }
 
             releaseReaders();
+            checkOutputCompletion();
         }
     }
 }
